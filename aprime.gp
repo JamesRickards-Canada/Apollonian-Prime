@@ -8,6 +8,3 @@ aprime_library = strprintf("./libaprime-%d-%d-%d.so", parigp_version[1], parigp_
 /*aprime.c*/
 
 
-
-
-default(parisize, "4096M");
