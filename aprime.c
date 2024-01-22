@@ -56,30 +56,30 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
   long classmax = (Bmax - Base)/ 24 + 1, i;/*Maximal number of curvatures found in each class.*/
   unsigned int **rclass = (unsigned int **)pari_malloc(24 * sizeof(unsigned int *));/*Stores pointers to the individual classes for curvatures.*/
   if (!rclass) {
-    printf("Insufficient memory to allocate to store the residue classes.\n");
+    pari_printf("Insufficient memory to allocate to store the residue classes.\n");
     exit(1);
   }
   for (i = 0; i < nres; i++) {
     rclass[res[i]] = (unsigned int *)pari_calloc(classmax * sizeof(unsigned int));/*pari_calloc the classes we want, since we want them as 0 to start.*/
     if (!rclass[res[i]]) {
-      printf("Insufficient memory to allocate to store the curvatures.\n");
+      pari_printf("Insufficient memory to allocate to store the curvatures.\n");
       exit(1);
     }
   }
   long maxdepth = 200;/*Maximal depth, to start.*/
   long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
   if (!depthseq) {
-    printf("Insufficient memory to allocate to store the depth sequence.\n");
+    pari_printf("Insufficient memory to allocate to store the depth sequence.\n");
     exit(1);
   }
   int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
   if (!swaps) {
-    printf("Insufficient memory to allocate to store the swaps.\n");
+    pari_printf("Insufficient memory to allocate to store the swaps.\n");
     exit(1);
   }
   int *primes = (int *)pari_calloc(maxdepth * sizeof(int));/*1 if only x[0] is prime, 2 if only x[1] is prime, 3 if both are prime.*/
   if (!primes) {
-    printf("Insufficient memory to allocate to store which indices are prime.\n");
+    pari_printf("Insufficient memory to allocate to store which indices are prime.\n");
     exit(1);
   }
   for (i = 0; i < maxdepth; i++) swaps[i] = -1;/*Initialize to all -1's*/
@@ -94,13 +94,12 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
   }
   long ind = 1;/*Which depth we are working at.*/
   long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
-  swaps[0] = 0;/*This value does not matter, but we set it to 0 to not create a problem.*/
-  depthseq[0] = 0;/*Same thing here.*/
   while (ind > 0) {/*We are coming in trying to swap this circle out.*/
     int cind = ++swaps[ind];/*Increment the swapping index.*/
     if (cind == 4) {/*Overflowed, go back.*/
       swaps[ind] = -1;
       ind--;
+      if (!ind) break;
       v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
       continue;
     }
@@ -111,7 +110,7 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
     long apbpc = 0;/*Now we can reasonably try a swap.*/
     for (i = 0; i < cind; i++) apbpc += v[i];
     for (i = cind + 1; i < 4; i++) apbpc += v[i];
-    long newc = (apbpc << 1) - v[cind];/*2(a+b+c)-d, the new curvature.*/
+    long newc = (apbpc << 1) - v[cind];/*2(a+b+c)-d, the new curvature.*/    
     if (newc > Bmax) continue;/*Too big! go back.*/
     long shifted = newc - Base;
     if (shifted >= 0) {
@@ -138,18 +137,18 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
       long newdepth = maxdepth << 1;/*Double it.*/
       depthseq = pari_realloc(depthseq, newdepth * sizeof(long));
       if (!depthseq) {
-        printf("Insufficient memory to reallocate the depth sequence.\n");
+        pari_printf("Insufficient memory to reallocate the depth sequence.\n");
         exit(1);
       }
       swaps = pari_realloc(swaps, newdepth * sizeof(int));
       if (!swaps) {
-        printf("Insufficient memory to reallocate the swaps.\n");
+        pari_printf("Insufficient memory to reallocate the swaps.\n");
         exit(1);
       }
       for (i = maxdepth; i < newdepth; i++) swaps[i] = -1;
       primes = pari_realloc(primes, newdepth * sizeof(int));
       if (!primes) {
-        printf("Insufficient memory to reallocate the primes.\n");
+        pari_printf("Insufficient memory to reallocate the primes.\n");
         exit(1);
       }
       maxdepth = newdepth;
