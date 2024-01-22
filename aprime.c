@@ -160,7 +160,7 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
   pari_free(swaps);
   pari_free(depthseq);
   /*Save the curvature counts to file.*/
-  if( !pari_is_dir("curvcounts")) {
+  if (!pari_is_dir("curvcounts")) {
     int s = system("mkdir -p curvcounts");
     if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts");
   }
@@ -168,14 +168,15 @@ thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bma
   for (i = 0; i < nres; i++) {
     long r = res[i];/*The residue.*/
     char *thisfile = stack_sprintf("%s%ld.dat", filestart, r);/*The file name.*/
-    FILE *f = fopen(thisfile, "w");/*Created the output file f*/
+    FILE *F = fopen(thisfile, "w");/*Created the output file f*/
     long firstind = 0;
     if (Bmin > (Base + r)) firstind = 1;/*Where to start, since we start at Base not Bmin we want to ignore the first one sometimes.*/
     long lastind = classmax - 1, j;
     while ((Base + 24 * lastind + r) > Bmax) lastind--;/*Where to end it.*/
     for (j = firstind; j <= lastind; j++) {
-      pari_fprintf(f, "%d\n", rclass[i][j]);
+      pari_fprintf(F, "%d\n", rclass[r][j]);
     }
+    fclose(F);
   } 
   for (i = 0; i < nres; i++) pari_free(rclass[res[i]]);
   pari_free(rclass);/*The last thing to free*/
