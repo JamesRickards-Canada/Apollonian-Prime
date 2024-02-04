@@ -7,14 +7,15 @@
 #include "aprime.h"
 
 /*STATIC DECLARATIONS*/
-static void thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig);
+static void thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig);
 static int sisprime(long p);
+static GEN thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig);
 
 /*MAIN BODY*/
 
 /*Finds the multiplicity of all curvatures in the odd prime component corresponding to v, saving them to a file. B can be an integer or a range.*/
 void
-thickenedcurvatures(GEN v, GEN B)
+thickened(GEN v, GEN B)
 {
   pari_sp av = avma;
   long Bmin = 0, Bmax = 0, t = typ(B);/*First, sort out Bmin and Bmax*/
@@ -44,13 +45,13 @@ thickenedcurvatures(GEN v, GEN B)
     else newv[ieven++] = itos(gel(v, i));
   }
   if (!sisprime(newv[0]) && !sisprime(newv[1])) pari_err_TYPE("At least one of the odd numbers must be prime", v);
-  thickenedcurvatures_execute(newv, res, nres, Bmin, Bmax, v);
+  thickened_execute(newv, res, nres, Bmin, Bmax, v);
   set_avma(av);
 }
 
-/*Executes thickenedcurvatures. Assumes the first two entries of v are odd, with at least one positive prime.*/
+/*Executes thickened. Assumes the first two entries of v are odd, with at least one positive prime.*/
 static void
-thickenedcurvatures_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig)
+thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig)
 {
   long Base = Bmin - (Bmin % 24);/*We want to start at a multiple of 24 to not ruin the mod stuff.*/
   long classmax = (Bmax - Base)/ 24 + 1, i;/*Maximal number of curvatures found in each class.*/
@@ -188,4 +189,147 @@ sisprime(long p)
   if (p <= 0) return 0;
   return uisprime(p);
 }
+
+/*Finds the number of curvatures between Bmin and Bmin+binsize*nbins-1, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to a two files.*/
+GEN
+thickened_bin(GEN v, unsigned long Bmin, unsigned long binsize, unsigned long nbins)
+{
+  pari_sp av = avma;
+  long newv[4];
+  long iodd = 0, ieven = 2, i;
+  for (i = 1; i <= 4; i++) {/*Make the first two odd.*/
+    if (Mod2(gel(v, i))) newv[iodd++] = itos(gel(v, i));
+    else newv[ieven++] = itos(gel(v, i));
+  }
+  if (!sisprime(newv[0]) && !sisprime(newv[1])) pari_err_TYPE("At least one of the odd numbers must be prime", v);
+  return gerepilecopy(av, thickened_bin_execute(newv, Bmin, binsize, nbins, v));
+}
+
+/*Executes thickened_bin. Assumes the first two entries of v are odd, with at least one positive prime. LEAVES GARBAGE, NOT GEREPILEUPTO SAFE*/
+static GEN
+thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig)
+{
+  unsigned long Bmax = Bmin + (nbins * binsize) - 1, i;
+  GEN primecounts = const_vecsmall(nbins, 0);
+  GEN thickcounts = const_vecsmall(nbins, 0);
+  long maxdepth = 200;/*Maximal depth, to start.*/
+  long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
+  if (!depthseq) {
+    pari_printf("Insufficient memory to allocate to store the depth sequence.\n");
+    exit(1);
+  }
+  int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
+  if (!swaps) {
+    pari_printf("Insufficient memory to allocate to store the swaps.\n");
+    exit(1);
+  }
+  int *primes = (int *)pari_calloc(maxdepth * sizeof(int));/*1 if only x[0] is prime, 2 if only x[1] is prime, 3 if both are prime.*/
+  if (!primes) {
+    pari_printf("Insufficient memory to allocate to store which indices are prime.\n");
+    exit(1);
+  }
+  for (i = 0; i < maxdepth; i++) swaps[i] = -1;/*Initialize to all -1's*/
+  for (i = 0; i <= 1; i++) {/*First two, checking primality*/
+    if (!sisprime(x[i])) continue;
+    primes[i] += (i + 1);
+    if (x[i] < Bmin && x[i] > Bmax) continue;/*Ensure we are in the right range.*/
+    long binno = 1 + ((x[i] - Bmin) / nbins);
+    thickcounts[binno]++;
+    primecounts[binno]++;
+  }
+  for (i = 2; i <= 3; i++) {/*Do the other first curvatures, not prime!.*/
+    if (x[i] < Bmin || x[i] > Bmax) continue;
+    long binno = 1 + ((x[i] - Bmin) / nbins);
+    thickcounts[binno]++;
+  }
+  long ind = 1;/*Which depth we are working at.*/
+  long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
+  while (ind > 0) {/*We are coming in trying to swap this circle out.*/
+    int cind = ++swaps[ind];/*Increment the swapping index.*/
+    if (cind == 4) {/*Overflowed, go back.*/
+      swaps[ind] = -1;
+      ind--;
+      if (!ind) break;
+      v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
+      continue;
+    }
+    long lastind = ind - 1;
+    if (cind == swaps[lastind]) continue; /*Same thing twice, so skip it.*/
+    if (!cind && primes[lastind] == 1) continue;/*Swapping out the only prime, not allowed!*/
+    if (cind == 1 && primes[lastind] == 2) continue;/*Swapping out the only prime, not allowed!*/
+    long apbpc = 0;/*Now we can reasonably try a swap.*/
+    for (i = 0; i < cind; i++) apbpc += v[i];
+    for (i = cind + 1; i < 4; i++) apbpc += v[i];
+    long newc = (apbpc << 1) - v[cind];/*2(a+b+c)-d, the new curvature.*/    
+    if (newc > Bmax) continue;/*Too big! go back.*/
+    long binno = newc - Bmin;
+    if (binno >= 0) {/*Update this bin in the thickened component.*/
+      binno = 1 + (binno / nbins);
+      thickcounts[binno]++;
+    }
+    else binno = 0;
+    depthseq[ind] = v[cind];/*Store the value we swapped away from.*/
+    v[cind] = newc;/*Update v*/
+    switch (cind) {/*Update primes*/
+      case 0:/*Check if prime*/
+        if (sisprime(newc)) {
+          primes[ind] = 3;/*1st index must be prime as we swapped the 0th*/
+          if (binno) primecounts[binno]++;
+        }
+        else primes[ind] = 2;
+        break;
+      case 1:/*Check if prime*/
+        if (sisprime(newc)) {
+          primes[ind] = 3;/*0th index must be prime as we swapped the 1st*/
+          if (binno) primecounts[binno]++;
+        }
+        else primes[ind] = 1;
+        break;
+      default:
+        primes[ind] = primes[lastind];/*Odd numbers did not change.*/
+    }
+    ind++;
+    if (ind == maxdepth) {/*We are going too deep, must pari_reallocate the storage location.*/
+      long newdepth = maxdepth << 1;/*Double it.*/
+      depthseq = pari_realloc(depthseq, newdepth * sizeof(long));
+      if (!depthseq) {
+        pari_printf("Insufficient memory to reallocate the depth sequence.\n");
+        exit(1);
+      }
+      swaps = pari_realloc(swaps, newdepth * sizeof(int));
+      if (!swaps) {
+        pari_printf("Insufficient memory to reallocate the swaps.\n");
+        exit(1);
+      }
+      for (i = maxdepth; i < newdepth; i++) swaps[i] = -1;
+      primes = pari_realloc(primes, newdepth * sizeof(int));
+      if (!primes) {
+        pari_printf("Insufficient memory to reallocate the primes.\n");
+        exit(1);
+      }
+      maxdepth = newdepth;
+    }
+  }
+  /*Time to free some of the allocated memory.*/
+  pari_free(primes);
+  pari_free(swaps);
+  pari_free(depthseq);
+  /*Save the binned curvature counts to file.*/
+  if (!pari_is_dir("curvcounts-binned")) {
+    int s = system("mkdir -p curvcounts-binned");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts-binned");
+  }
+  char *filestart = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu_", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
+  char *filethick = stack_sprintf("%sthick.dat", filestart);
+  FILE *Fthick = fopen(filethick, "w");/*Create the output file*/
+  for (i = 1; i <= nbins; i++) pari_fprintf(Fthick, "%d\n", thickcounts[i]);
+  fclose(Fthick);
+  
+  char *fileprime = stack_sprintf("%sprime.dat", filestart);
+  FILE *Fprime = fopen(fileprime, "w");/*Create the output file*/
+  for (i = 1; i <= nbins; i++) pari_fprintf(Fprime, "%d\n", primecounts[i]);
+  fclose(Fprime);
+  return mkvec2(primecounts, thickcounts);
+}
+
 

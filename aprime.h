@@ -1,3 +1,4 @@
 /*aprime.c methods*/
 
-void thickenedcurvatures(GEN v, GEN B);
+void thickened(GEN v, GEN B);
+GEN thickened_bin(GEN v, unsigned long Bmin, unsigned long binsize, unsigned long nbins);
