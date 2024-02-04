@@ -231,13 +231,12 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
   for (i = 0; i < maxdepth; i++) swaps[i] = -1;/*Initialize to all -1's*/
   for (i = 0; i <= 1; i++) {/*First two, checking primality*/
     if (!sisprime(x[i])) continue;
-    primes[i] += (i + 1);
+    primes[0] += (i + 1);
     if (x[i] < Bmin && x[i] > Bmax) continue;/*Ensure we are in the right range.*/
     long binno = 1 + ((x[i] - Bmin) / binsize);
-    thickcounts[binno]++;
     primecounts[binno]++;
   }
-  for (i = 2; i <= 3; i++) {/*Do the other first curvatures, not prime!.*/
+  for (i = 0; i <= 3; i++) {/*Do the first curvatures thickness!.*/
     if (x[i] < Bmin || x[i] > Bmax) continue;
     long binno = 1 + ((x[i] - Bmin) / binsize);
     thickcounts[binno]++;
