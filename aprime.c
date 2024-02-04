@@ -233,13 +233,13 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
     if (!sisprime(x[i])) continue;
     primes[i] += (i + 1);
     if (x[i] < Bmin && x[i] > Bmax) continue;/*Ensure we are in the right range.*/
-    long binno = 1 + ((x[i] - Bmin) / nbins);
+    long binno = 1 + ((x[i] - Bmin) / binsize);
     thickcounts[binno]++;
     primecounts[binno]++;
   }
   for (i = 2; i <= 3; i++) {/*Do the other first curvatures, not prime!.*/
     if (x[i] < Bmin || x[i] > Bmax) continue;
-    long binno = 1 + ((x[i] - Bmin) / nbins);
+    long binno = 1 + ((x[i] - Bmin) / binsize);
     thickcounts[binno]++;
   }
   long ind = 1;/*Which depth we are working at.*/
@@ -264,7 +264,7 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
     if (newc > Bmax) continue;/*Too big! go back.*/
     long binno = newc - Bmin;
     if (binno >= 0) {/*Update this bin in the thickened component.*/
-      binno = 1 + (binno / nbins);
+      binno = 1 + (binno / binsize);
       thickcounts[binno]++;
     }
     else binno = 0;
@@ -319,7 +319,7 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
     int s = system("mkdir -p curvcounts-binned");
     if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts-binned");
   }
-  char *filestart = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu_", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
+  char *filestart = stack_sprintf("curvcounts-binned/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu_", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
   char *filethick = stack_sprintf("%sthick.dat", filestart);
   FILE *Fthick = fopen(filethick, "w");/*Create the output file*/
   for (i = 1; i <= nbins; i++) pari_fprintf(Fthick, "%d\n", thickcounts[i]);
