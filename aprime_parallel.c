@@ -69,6 +69,7 @@ parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
       swapsinit[sind] = swaps[lastind];
       sind++;/*No need to check if this exceeds maxtasks, we chose maxtasks large enough to be OK.*/
       ind--;/*We assume maxdepth > 0, so we don't enter the for loop with ind=0. It would be silly to have maxdepth=0.*/
+      v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
       continue;
     }
     /*Continue with the normal depth first search.*/
