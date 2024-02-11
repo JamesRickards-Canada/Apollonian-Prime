@@ -2,6 +2,7 @@
 
 /*INCLUSIONS*/
 #include <pari.h>
+#include "aprime.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,7 @@ typedef struct _thickmults_t {/*For doing depth first search on the prime compon
   long **starts;;/*Stores the initial quadruples*/
   int *primesinit;/*Stores the initial value of primes*/
   int *swapsinit;/*Stores the initial value of swaps*/
-  long *todo;/*The smallest task not yet done, NULL if done.*/
+  long *todo;/*The smallest task not yet done, -1 if done.*/
 } thickmults_t;
 
 pthread_mutex_t mutex_thickmults;
@@ -55,9 +56,9 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
     found[shifted]++;
   }
   /*Let's do the search!*/
-  long ind = 1, sind = 0;/*Which depth we are working at, and which index in starts, primesinint, and swapsinit we are at.*/
+  long ind = 1, sind = 0;/*Which depth we are working at, and which index in starts, primesinit, and swapsinit we are at.*/
   long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
-  for(;;) {/*We are coming in trying to swap a circle out. Guaranteed that ind>0 entering the loop.*/
+  for (;;) {/*We are coming in trying to swap a circle out. Guaranteed that ind > 0 entering the loop.*/
     long lastind = ind - 1;
     if (ind == maxdepthp1) {/*We reached the end! Add this to our list.*/
       starts[sind] = (long *)pari_malloc(sizeof(long) << 2);/*Store the quadruple.*/
@@ -65,7 +66,7 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
       primesinit[sind] = primes[lastind];
       swapsinit[sind] = swaps[lastind];
       sind++;/*No need to check if this exceeds maxtasks, we chose maxtasks large enough to be OK.*/
-      ind--;/*We assume maxdepth>0, so we don't enter the for loop with ind=0. It would be silly to have maxdepth=0.*/
+      ind--;/*We assume maxdepth > 0, so we don't enter the for loop with ind=0. It would be silly to have maxdepth=0.*/
       continue;
     }
     /*Continue with the normal depth first search.*/
@@ -73,7 +74,7 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
     if (cind == 4) {/*Overflowed, go back.*/
       swaps[ind] = -1;
       ind--;
-      if (!ind) break;
+      if (!ind) break; /*All done!!*/
       v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
       continue;
     }
@@ -153,6 +154,85 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
 static void *
 thickened_mult_par(void *args)
 {
-  /*TO DO*/
+  /*Import the given data*/
+  thickmults_t *data = (thickmults_t *)args;
+  atomic_uint *found = data -> found;
+  long Bmin = data -> Bmin, Bmax = data -> Bmax, Ntasks = data -> Ntasks;
+  long **starts = data -> starts
+  int *primesinit = data -> primesinit, *swapsinit = data -> swapsinit;
+  /*Initialize the required data for the depth first search.*/
+  long maxdepth = 200;/*Maximal depth, to start.*/
+  long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
+  int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
+  int *primes = (int *)pari_malloc(maxdepth * sizeof(int));/*1 if only x[0] is prime, 2 if only x[1] is prime, 3 if both are prime.*/
+  /*Time to execute the searches.*/
+  for (;;) {/*First, let's figure out which case we are doing.*/
+    pthread_mutex_lock(&mutex_thickmults);/*Retrieve the next index*/
+    long *next = data -> todo;
+    if (*next == -1) { pthread_mutex_unlock(&mutex_thickmults); break; }/*All tasks done or running. Don't forget to unlock!!*/
+    long startsind = *next;
+    (*next)++;
+    if (*next == Ntasks) *next = -1;/*Last one.*/
+    pthread_mutex_unlock(&mutex_thickmults);
+    /*Initialize the starting data*/
+    for (i = 1; i < maxdepth; i++) {
+      swaps[i] = -1;/*Initialize to all -1's*/
+      primes[i] = 0;/*All 0 to start.*/
+    }
+    swaps[0] = swapsinit[startsind];/*Only extra one to preset.*/
+    primes[0] = primesinit;/*Same here*/
+    long *x = starts[startsind];
+    long ind = 1;/*Which depth we are working at.*/
+    long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
+    for (;;) {/*We are coming in trying to swap a circle out. Guaranteed that ind > 0 entering the loop.*/
+      int cind = ++swaps[ind];/*Increment the swapping index.*/
+      if (cind == 4) {/*Overflowed, go back.*/
+        swaps[ind] = -1;
+        ind--;
+        if (!ind) break;/*All done!!*/
+        v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
+        continue;
+      }
+      long lastind = ind - 1;
+      if (cind == swaps[lastind]) continue; /*Same thing twice, so skip it.*/
+      if (!cind && primes[lastind] == 1) continue;/*Swapping out the only prime, not allowed!*/
+      if (cind == 1 && primes[lastind] == 2) continue;/*Swapping out the only prime, not allowed!*/
+      long apbpc = 0;/*Now we can reasonably try a swap.*/
+      for (i = 0; i < cind; i++) apbpc += v[i];
+      for (i = cind + 1; i < 4; i++) apbpc += v[i];
+      long newc = (apbpc << 1) - v[cind];/*2(a+b+c)-d, the new curvature.*/    
+      if (newc > Bmax) continue;/*Too big! go back.*/
+      long shifted = newc - Bmin;
+      if (shifted >= 0) found[shifted]++;/*Update found.*/
+      depthseq[ind] = v[cind];/*Store the value we swapped away from.*/
+      v[cind] = newc;/*Update v*/
+      switch (cind) {/*Update primes*/
+        case 0:/*Check if prime*/
+          if (sisprime(newc)) primes[ind] = 3;/*1st index must be prime as we swapped the 0th*/
+          else primes[ind] = 2;
+          break;
+        case 1:/*Check if prime*/
+          if (sisprime(newc)) primes[ind] = 3;/*0th index must be prime as we swapped the 1st*/
+          else primes[ind] = 1;
+          break;
+        default:
+          primes[ind] = primes[lastind];/*Odd numbers did not change.*/
+      }
+      ind++;
+      if (ind == maxdepth) {/*We are going too deep, must pari_reallocate the storage location.*/
+        long newdepth = maxdepth << 1;/*Double it.*/
+        depthseq = pari_realloc(depthseq, newdepth * sizeof(long));
+        swaps = pari_realloc(swaps, newdepth * sizeof(int));
+        for (i = maxdepth; i < newdepth; i++) swaps[i] = -1;
+        primes = pari_realloc(primes, newdepth * sizeof(int));
+        maxdepth = newdepth;
+      }
+    }
+  }
+  /*Time to free the allocated memory.*/
+  pari_free(primes);
+  pari_free(swaps);
+  pari_free(depthseq);
+  return NULL;
 }
 

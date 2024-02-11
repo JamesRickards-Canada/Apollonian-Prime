@@ -8,7 +8,6 @@
 
 /*STATIC DECLARATIONS*/
 static void thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig);
-static int sisprime(long p);
 static GEN thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig);
 
 /*MAIN BODY*/
@@ -183,7 +182,7 @@ thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vor
 }
 
 /*Checks if p is prime but allows for long, not just ulong, and returns 0 if p<=0 (even if -p is prime).*/
-static int
+int
 sisprime(long p)
 {
   if (p <= 0) return 0;
