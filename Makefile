@@ -1,7 +1,7 @@
 #The standard location for the file pari.cfg is /usr/local/lib/pari/pari.cfg. If this is the case, call "make" to get going. Otherwise, call "make setup", which helps you find the correct pari.cfg file, saving it in paricfg_loc.txt (this step can be manually done as well, if you know where it is saved to). After this, call "make" to get going. Calling "make clean" clears up the .o files.
 
 #The files we want to include
-OBJS = aprime.o
+OBJS = aprime.o aprime_parallel.o
 #Name of the output library
 TARGET = aprime
 
@@ -30,7 +30,7 @@ all: $(DYN)
 
 #Build the shared library object
 $(DYN): $(OBJS)
-	$(CC) -o $@ -shared	$(CFLAGS) -Wl,-shared $(OBJS) -lc -lm -L$(PARI_LIB) -lpari
+	$(CC) -o $@ -shared	$(CFLAGS) -Wl,-shared -pthread $(OBJS) -lc -lm -L$(PARI_LIB) -lpari
 
 #Make the object files
 %.o: %.c
