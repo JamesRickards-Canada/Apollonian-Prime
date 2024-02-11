@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
+#include <time.h>
 
 typedef struct _thickmults_t {/*For doing depth first search on the prime components.*/
   int myid;
@@ -29,6 +30,8 @@ GEN
 parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
 {
   pari_sp av = avma;
+  struct timespec start, finish;/*For measuring the real time.*/
+  clock_gettime(CLOCK_MONOTONIC, &start);
   if (Nthreads <= 1) pari_err_TYPE("Need to use at least 2 threads", stoi(Nthreads));
   long x[4];
   long iodd = 0, ieven = 2, i;
@@ -135,6 +138,11 @@ parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
   FILE *F = fopen(filename, "w");/*Created the output file f*/
   for (i = 0; i < nB; i++) pari_fprintf(F, "%d\n", found[i]);
   fclose(F);
+  /*Print the time taken.*/
+  clock_gettime(CLOCK_MONOTONIC, &finish);
+  double elapsed = (finish.tv_sec - start.tv_sec);
+  elapsed += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+  pari_printf("Total computation time: %fs\n", elapsed);
   /*Free all the memory except for found.*/
   set_avma(av);/*All info we need is not on the stack.*/
   pari_free(primes);
