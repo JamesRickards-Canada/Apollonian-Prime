@@ -123,8 +123,14 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
   for (i = 0; i < Nthreads; i++) pthread_join(thread_id[i], NULL);/*Wait for them to all finish.*/
   pthread_mutex_destroy(&mutex_thickmults);/*Eliminate the mutex*/
   /*Let's write to the file first.*/
-  
-  
+  if (!pari_is_dir("curvcounts")) {
+    int s = system("mkdir -p curvcounts");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts");
+  }
+  char *filename = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld.dat", gel(v, 1), gel(v, 2), gel(v, 3), gel(v, 4), Bmin, Bmax);
+  FILE *F = fopen(filename, "w");/*Created the output file f*/
+  for (i = 0; i < nB; i++) pari_fprintf(F, "%d\n", found[i]);
+  fclose(F);
   /*Free all the memory except for found.*/
   set_avma(av);/*All info we need is not on the stack.*/
   pari_free(primes);
@@ -134,23 +140,13 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
   pari_free(primesinit);
   for (i = 0; i < sind; i++) pari_free(starts[i]);
   pari_free(starts);
-  /*Make the return Vecsmall if requested*/
   GEN ret = gen_1;
-  if (load) {
-    /*Do it.*/
+  if (load) {/*Make the return Vecsmall if requested*/
+    ret = cgetg(sind + 1, t_VECSMALL);
+    for (i = 1; i <= sind; i++) ret[i] = found[i - 1];
   }
-  /*Free found*/
-  
+  pari_free(found);/*Free found, the last unfreed variable.*/
   return ret;
-  
-  
-  
-  for (i = 0; i < totstart; i++) pari_free(starts[i]);
-  pari_free(starts);/*Free the memory.*/
-  GEN ct = cgetg(nbins + 1, t_VECSMALL);
-  for (i = 0; i < nbins; i++) ct[i + 1] = counts[i];
-  pari_free(counts);
-  return ct;
 }
 
 /*Executes the depth first search in parallel.*/
