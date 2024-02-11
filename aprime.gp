@@ -1,7 +1,7 @@
 \r apol
 
 print("\n\nType '?aprime' for help.\n\n");
-addhelp(aprime, "This package is used for computing thickened prime curvature components of Apollonian circle packings. Installed methods:\n\tthickened, thickened_bin.");
+addhelp(aprime, "This package is used for computing thickened prime curvature components of Apollonian circle packings. Installed methods:\n\tparthickenedmult, thickened, thickened_bin.");
 parigp_version = version();
 aprime_library = strprintf("./libaprime-%d-%d-%d.so", parigp_version[1], parigp_version[2], parigp_version[3]);
 
@@ -13,3 +13,6 @@ addhelp(thickened,"thickened(v, B): finds the multiplicities of all curvatures i
 install(thickened_bin,"GUUU");
 addhelp(thickened_bin,"thickened_bin(v, Bmin, binsize, nbins): Finds the number of curvatures between Bmin and Bmin+binsize*nbins-1 in the thickened prime component, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to two files.");
 
+/*aprime_parallel.c*/
+install(parthickenedmult,"GLLLD0,L,");
+addhelp(parthickenedmult,"parthickenedmult(v, Bmin, Bmax, Nthreads, {load = 0}: finds the multiplicities of all curvatures in the thickened odd prime component of the Apollonian circle packing corresponding to the Descartes quadruple v. If v does not contain an prime curvature, raises an error. We search in the range Bmin to Bmax (inclusive), and do NOT separate out by residue modulo 24 (so 16/18 of the classes modulo 24 will be 0). Saves the data to file ./curvcounts/v[1]_v[2]_v[3]_v[4]_Bmin-to-Bmax.dat, with one multiplicity per line, starting at Bmin. We use a parallel implementation with Nthreads (total number of threads used is one more due to the main thread that runs everything). If load=1, we also return this as a Vecsmall. This is not suggested to be used if Bmax-Bmin>10^7, as the return vector size starts to be prohibitively large.");

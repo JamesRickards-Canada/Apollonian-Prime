@@ -22,19 +22,21 @@ typedef struct _thickmults_t {/*For doing depth first search on the prime compon
 
 pthread_mutex_t mutex_thickmults;
 
+static void *thickened_mult_par(void *args);
+
 /*Computes the multiplicites of curvatures in the thickened prime component corresponding to v between Bmin and Bmax (inclusive), using a parallel implementation on Nthreads. The data is saved to a file in ./curvcounts, and if load = 1, we also return it as a Vecsmall (not suggested if Bmax-Bmin >= 10^7).*/
 GEN
-parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
+parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
 {
   pari_sp av = avma;
   if (Nthreads <= 1) pari_err_TYPE("Need to use at least 2 threads", stoi(Nthreads));
   long x[4];
   long iodd = 0, ieven = 2, i;
   for (i = 1; i <= 4; i++) {/*Make the first two odd.*/
-    if (Mod2(gel(v, i))) x[iodd++] = itos(gel(v, i));
-    else x[ieven++] = itos(gel(v, i));
+    if (Mod2(gel(vgen, i))) x[iodd++] = itos(gel(vgen, i));
+    else x[ieven++] = itos(gel(vgen, i));
   }
-  if (!sisprime(x[0]) && !sisprime(x[1])) pari_err_TYPE("At least one of the odd numbers must be prime", v);
+  if (!sisprime(x[0]) && !sisprime(x[1])) pari_err_TYPE("At least one of the odd numbers must be prime", vgen);
   /*Now we have checked the initial input, time to initialize the multiplicity storing variable.*/
   long nB = Bmax - Bmin + 1;/*Number of multiplicities we are keeping track of*/
   atomic_uint *found = (atomic_uint *)pari_calloc(nB * sizeof(atomic_uint));/*Stores the found curvatures, we won't be going past a uint size.*/
@@ -118,7 +120,7 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
     data[i].primesinit = primesinit;
     data[i].swapsinit = swapsinit;
     data[i].todo = &todo;
-  }  
+  }
   pthread_mutex_init(&mutex_thickmults, NULL);/*Make the mutex*/
   for (i = 0; i < Nthreads; i++) pthread_create(&thread_id[i], NULL, thickened_mult_par, (void *)&data[i]);/*Make the threads.*/
   for (i = 0; i < Nthreads; i++) pthread_join(thread_id[i], NULL);/*Wait for them to all finish.*/
@@ -128,7 +130,7 @@ parthickenedmult(GEN v, long Bmin, long Bmax, int Nthreads, int load)
     int s = system("mkdir -p curvcounts");
     if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts");
   }
-  char *filename = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld.dat", gel(v, 1), gel(v, 2), gel(v, 3), gel(v, 4), Bmin, Bmax);
+  char *filename = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld.dat", gel(vgen, 1), gel(vgen, 2), gel(vgen, 3), gel(vgen, 4), Bmin, Bmax);
   FILE *F = fopen(filename, "w");/*Created the output file f*/
   for (i = 0; i < nB; i++) pari_fprintf(F, "%d\n", found[i]);
   fclose(F);
@@ -158,10 +160,10 @@ thickened_mult_par(void *args)
   thickmults_t *data = (thickmults_t *)args;
   atomic_uint *found = data -> found;
   long Bmin = data -> Bmin, Bmax = data -> Bmax, Ntasks = data -> Ntasks;
-  long **starts = data -> starts
+  long **starts = data -> starts;
   int *primesinit = data -> primesinit, *swapsinit = data -> swapsinit;
   /*Initialize the required data for the depth first search.*/
-  long maxdepth = 200;/*Maximal depth, to start.*/
+  long maxdepth = 200, i;/*Maximal depth, to start.*/
   long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
   int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
   int *primes = (int *)pari_malloc(maxdepth * sizeof(int));/*1 if only x[0] is prime, 2 if only x[1] is prime, 3 if both are prime.*/
@@ -180,7 +182,7 @@ thickened_mult_par(void *args)
       primes[i] = 0;/*All 0 to start.*/
     }
     swaps[0] = swapsinit[startsind];/*Only extra one to preset.*/
-    primes[0] = primesinit;/*Same here*/
+    primes[0] = primesinit[startsind];/*Same here*/
     long *x = starts[startsind];
     long ind = 1;/*Which depth we are working at.*/
     long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
