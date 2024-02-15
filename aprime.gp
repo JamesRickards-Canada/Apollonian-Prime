@@ -8,7 +8,7 @@ aprime_library = strprintf("./libaprime-%d-%d-%d.so", parigp_version[1], parigp_
 /*aprime.c*/
 
 install(primeroots_bin,"GUUU",,aprime_library);
-addhelp(primeroots_bin,"primeroots_bin(v, Bmin, binsize, nbins): finds the number of (prime) curvatures in the ACP corresponding to v between Bmin and Bmin+binsize*nbins-1, divided into nbins bins of length binsize each. We retun the tuple [prime counts, total counts], and also save this to the files ./fullcurvcounts/v[1]_v[2]_v[3]_v[4]_from-$Bmin-size-$binsize-nbins-$nbins-(prime/all).dat");
+addhelp(primeroots_bin,"primeroots_bin(v, Bmin, binsize, nbins): finds the number of (prime) curvatures in the ACP corresponding to v between Bmin and Bmin+binsize*nbins-1, divided into nbins bins of length binsize each. We retun the tuple [prime root counts, prime max entry counts, total counts], and also save this to the files ./fullcurvcounts/v[1]_v[2]_v[3]_v[4]_from-$Bmin-size-$binsize-nbins-$nbins-(primeroot/primeall/all).dat");
 
 install(thickened,"vGG");
 addhelp(thickened,"thickened(v, B): finds the multiplicities of all curvatures in the thickened odd prime component of the Apollonian circle packing corresponding to the Descartes quadruple v. If v does not contain an prime curvature, raises an error. If B is an integer we search from 1 to B, else B=[Bmin, Bmax] and we search from Bmin to Bmax. Saves the data to files ./curvcounts/v[1]_v[2]_v[3]_v[4]_Bmin-to-Bmax_res-R.dat, one file per each of the 6/8 residue classes R. The first line of the file corresponds to the multiplicity of the smallest integer equivalent to R modulo 24 that is at least Bmin, and each subsequent line corresponds to the next residue in that class. Be aware that if Bmax-Bmin>=5*10^8, then the files start to be larger than 1GB each.");

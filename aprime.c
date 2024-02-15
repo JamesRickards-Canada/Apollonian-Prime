@@ -210,8 +210,9 @@ static GEN
 primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig)
 {
   unsigned long Bmax = Bmin + (nbins * binsize) - 1, i;
-  GEN primerootcounts = const_vecsmall(nbins, 0);
-  GEN allcirclecounts = const_vecsmall(nbins, 0);
+  GEN primerootcounts = const_vecsmall(nbins, 0);/*Counts quadruples with max entry prime and no other primes*/
+  GEN primeallcounts = const_vecsmall(nbins, 0);/*Counts quadruples with max entry prime*/
+  GEN allcirclecounts = const_vecsmall(nbins, 0);/*Counts total number of curvatures.*/
   long maxdepth = 200;/*Maximal depth, to start.*/
   long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
   int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
@@ -260,6 +261,7 @@ primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsi
             primes[ind] = 1;/*Just this is prime, and we have a prime root.*/
             if (binno) primerootcounts[binno]++;/*Update the prime root as long as it is above Bmin.*/
           }
+          if (binno) primeallcounts[binno]++;/*Always update this.*/
         }
         else {
           if (primes[lastind] >= 2) primes[ind] = 2;/*x[1] is prime only*/
@@ -273,6 +275,7 @@ primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsi
             primes[ind] = 2;/*Just x[1] is prime*/
             if (binno) primerootcounts[binno]++;/*Update the prime root as long as it is above Bmin.*/
           }
+          if (binno) primeallcounts[binno]++;/*Always update this.*/
         }
         else {
           if (primes[lastind] % 2) primes[ind] = 1;/*x[0] is prime only*/
@@ -307,11 +310,16 @@ primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsi
   for (i = 1; i <= nbins; i++) pari_fprintf(Fall, "%d\n", allcirclecounts[i]);
   fclose(Fall);
   
-  char *fileprime = stack_sprintf("%sprime.dat", filestart);
+  char *fileprime = stack_sprintf("%sprimeroot.dat", filestart);
   FILE *Fprime = fopen(fileprime, "w");/*Create the output file*/
   for (i = 1; i <= nbins; i++) pari_fprintf(Fprime, "%d\n", primerootcounts[i]);
   fclose(Fprime);
-  return mkvec2(primerootcounts, allcirclecounts);
+  
+  char *fileprimeall = stack_sprintf("%sprimeall.dat", filestart);
+  FILE *Fprimeall = fopen(fileprimeall, "w");/*Create the output file*/
+  for (i = 1; i <= nbins; i++) pari_fprintf(Fprimeall, "%d\n", primeallcounts[i]);
+  fclose(Fprimeall);
+  return mkvec3(primerootcounts, primeallcounts, allcirclecounts);
 }
 
 /*Finds the number of curvatures between Bmin and Bmin+binsize*nbins-1 in the corresponding thickened prime component, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to two files.*/
