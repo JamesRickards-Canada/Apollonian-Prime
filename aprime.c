@@ -7,6 +7,7 @@
 #include "aprime.h"
 
 /*STATIC DECLARATIONS*/
+static GEN primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig);
 static void thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vorig);
 static GEN thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig);
 
@@ -189,7 +190,131 @@ sisprime(long p)
   return uisprime(p);
 }
 
-/*Finds the number of curvatures between Bmin and Bmin+binsize*nbins-1, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to a two files.*/
+/*In the full Apollonian circle packing, finds the number of curvatures between Bmin and Bmin+binsize*nbins-1, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to two files.*/
+GEN
+primeroots_bin(GEN v, unsigned long Bmin, unsigned long binsize, unsigned long nbins)
+{
+  pari_sp av = avma;
+  GEN vred = apol_red(v, 0, 0);/*precision does not matter.*/
+  long newv[4];
+  long iodd = 0, ieven = 2, i;
+  for (i = 1; i <= 4; i++) {/*Make the first two odd.*/
+    if (Mod2(gel(vred, i))) newv[iodd++] = itos(gel(vred, i));
+    else newv[ieven++] = itos(gel(vred, i));
+  }
+  return gerepilecopy(av, primeroots_bin_execute(newv, Bmin, binsize, nbins, v));
+}
+
+/*Executes primeroots_bin. Assumes the first two entries of v are odd. LEAVES GARBAGE, NOT GEREPILEUPTO SAFE*/
+static GEN
+primeroots_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsigned long nbins, GEN vorig)
+{
+  unsigned long Bmax = Bmin + (nbins * binsize) - 1, i;
+  GEN primerootcounts = const_vecsmall(nbins, 0);
+  GEN allcirclecounts = const_vecsmall(nbins, 0);
+  long maxdepth = 200;/*Maximal depth, to start.*/
+  long *depthseq = (long *)pari_malloc(maxdepth * sizeof(long));/*depthseq[i] tracks the value we swapped away from in the ith iteration.*/
+  int *swaps = (int *)pari_malloc(maxdepth * sizeof(int));/*Tracks the sequence of swaps, from index 1 to 4.*/
+  int *primes = (int *)pari_calloc(maxdepth * sizeof(int));/*0 if neither x[0] nor x[1] are prime, 1 if only x[0] is prime, 2 if only x[1] is prime, 3 if both are prime.*/
+  for (i = 0; i < maxdepth; i++) swaps[i] = -1;/*Initialize to all -1's*/
+  for (i = 0; i <= 1; i++) {/*First two, checking primality*/
+    if (!sisprime(x[i])) continue;
+    primes[0] += (i + 1);/*We aren't counting the reduced quadruple as a prime root, so just initialize primes[0]/*/
+  }
+  for (i = 0; i <= 3; i++) {/*First four circles*/
+    if (x[i] < Bmin || x[i] > Bmax) continue;
+    long binno = 1 + ((x[i] - Bmin) / binsize);
+    allcirclecounts[binno]++;
+  }
+  long ind = 1;/*Which depth we are working at.*/
+  long v[4] = {x[0], x[1], x[2], x[3]};/*Initial quadruple.*/
+  while (ind > 0) {/*We are coming in trying to swap this circle out.*/
+    int cind = ++swaps[ind];/*Increment the swapping index.*/
+    if (cind == 4) {/*Overflowed, go back.*/
+      swaps[ind] = -1;
+      ind--;
+      if (!ind) break;
+      v[swaps[ind]] = depthseq[ind];/*Update our v backwards to the correct thing.*/
+      continue;
+    }
+    long lastind = ind - 1;
+    if (cind == swaps[lastind]) continue; /*Same thing twice, so skip it.*/
+    long apbpc = 0;/*Now we can reasonably try a swap.*/
+    for (i = 0; i < cind; i++) apbpc += v[i];
+    for (i = cind + 1; i < 4; i++) apbpc += v[i];
+    long newc = (apbpc << 1) - v[cind];/*2(a+b+c)-d, the new curvature.*/    
+    if (newc > Bmax) continue;/*Too big! go back.*/
+    long binno = newc - Bmin;
+    if (binno >= 0) {/*Update this bin in the thickened component.*/
+      binno = 1 + (binno / binsize);
+      allcirclecounts[binno]++;
+    }
+    else binno = 0;
+    depthseq[ind] = v[cind];/*Store the value we swapped away from.*/
+    v[cind] = newc;/*Update v*/
+    switch (cind) {/*Update primes*/
+      case 0:/*Check if prime*/
+        if (sisprime(newc)) {
+          if (primes[lastind] >= 2) primes[ind] = 3;/*Both are prime!*/
+          else {
+            primes[ind] = 1;/*Just this is prime, and we have a prime root.*/
+            if (binno) primerootcounts[binno]++;/*Update the prime root as long as it is above Bmin.*/
+          }
+        }
+        else {
+          if (primes[lastind] >= 2) primes[ind] = 2;/*x[1] is prime only*/
+          else primes[ind] = 0;/*Neither are prime.*/
+        }
+        break;
+      case 1:/*Check if prime*/
+        if (sisprime(newc)) {
+          if (primes[lastind] % 2) primes[ind] = 3;/*Both are prime!*/
+          else {
+            primes[ind] = 2;/*Just x[1] is prime*/
+            if (binno) primerootcounts[binno]++;/*Update the prime root as long as it is above Bmin.*/
+          }
+        }
+        else {
+          if (primes[lastind] % 2) primes[ind] = 1;/*x[0] is prime only*/
+          else primes[ind] = 0;/*Neither are prime.*/
+        }
+        break;
+      default:
+        primes[ind] = primes[lastind];/*Odd numbers did not change, and we did not get a new prime component root..*/
+    }
+    ind++;
+    if (ind == maxdepth) {/*We are going too deep, must pari_reallocate the storage location.*/
+      long newdepth = maxdepth << 1;/*Double it.*/
+      depthseq = pari_realloc(depthseq, newdepth * sizeof(long));
+      swaps = pari_realloc(swaps, newdepth * sizeof(int));
+      for (i = maxdepth; i < newdepth; i++) swaps[i] = -1;
+      primes = pari_realloc(primes, newdepth * sizeof(int));
+      maxdepth = newdepth;
+    }
+  }
+  /*Time to free some of the allocated memory.*/
+  pari_free(primes);
+  pari_free(swaps);
+  pari_free(depthseq);
+  /*Save the binned curvature counts to files.*/
+  if (!pari_is_dir("fullcurvcounts")) {
+    int s = system("mkdir -p fullcurvcounts");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts-binned");
+  }
+  char *filestart = stack_sprintf("fullcurvcounts/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu-", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
+  char *fileall = stack_sprintf("%sall.dat", filestart);
+  FILE *Fall = fopen(fileall, "w");/*Create the output file*/
+  for (i = 1; i <= nbins; i++) pari_fprintf(Fall, "%d\n", allcirclecounts[i]);
+  fclose(Fall);
+  
+  char *fileprime = stack_sprintf("%sprime.dat", filestart);
+  FILE *Fprime = fopen(fileprime, "w");/*Create the output file*/
+  for (i = 1; i <= nbins; i++) pari_fprintf(Fprime, "%d\n", primerootcounts[i]);
+  fclose(Fprime);
+  return mkvec2(primerootcounts, allcirclecounts);
+}
+
+/*Finds the number of curvatures between Bmin and Bmin+binsize*nbins-1 in the corresponding thickened prime component, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to two files.*/
 GEN
 thickened_bin(GEN v, unsigned long Bmin, unsigned long binsize, unsigned long nbins)
 {
