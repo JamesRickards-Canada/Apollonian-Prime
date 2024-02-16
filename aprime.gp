@@ -1,7 +1,7 @@
 \r apol
 
 print("\n\nType '?aprime' for help.\n\n");
-addhelp(aprime, "This package is used for computing thickened prime curvature components of Apollonian circle packings. Installed methods:\n\tprimeroots_bin, parthickenedmult, thickened, thickened_bin.");
+addhelp(aprime, "This package is used for computing thickened prime curvature components of Apollonian circle packings. Installed methods:\n\tprimerootred, primeroots_bin, parthickenedmult, thickened, thickened_bin.");
 parigp_version = version();
 aprime_library = strprintf("./libaprime-%d-%d-%d.so", parigp_version[1], parigp_version[2], parigp_version[3]);
 
@@ -15,6 +15,9 @@ addhelp(thickened,"thickened(v, B): finds the multiplicities of all curvatures i
 
 install(thickened_bin,"GUUU");
 addhelp(thickened_bin,"thickened_bin(v, Bmin, binsize, nbins): finds the number of curvatures between Bmin and Bmin+binsize*nbins-1 in the thickened prime component, saving the counts in blocks of length binsize. Returns [prime counts, thickened counts]. We also save this to two files.");
+
+install(primerootred,"G");
+addhelp(primerootred,"primerootred(v): returns the prime root quadruple attached to v, or 0 if v contains no odd primes.");
 
 /*aprime_parallel.c*/
 install(parthickenedmult,"GLLLD0,L,");

@@ -463,4 +463,51 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
   return mkvec2(primecounts, thickcounts);
 }
 
+/*Reduces v to the prime root it is a part of, or returns 0 if it does not contain a prime.*/
+GEN
+primerootred(GEN v)
+{
+  pari_sp av = avma;
+  long i;
+  GEN w = cgetg(5, t_VECSMALL);
+  for (i = 1; i <= 4; i++) w[i] = itos(gel(v, i));
+  long oddinds[2], ind = 0;
+  for (i = 1; i <= 4; i++) if (w[i] % 2) oddinds[ind++] = i;
+  long primes = 0;/*primes=0 if neither odd is prime, 1 if only the first, 2 if only the second, and 3 if both are prime.*/
+  if (sisprime(w[oddinds[0]])) primes++;
+  if (sisprime(w[oddinds[1]])) primes += 2;
+  if (!primes) return gc_const(av, gen_0);
+  for (;;) {
+    ind = vecsmall_indexmax(w);/*The largest circle, to swap.*/
+    long newc = 0;
+    for (i = 1; i < ind; i++) newc += w[i];
+    for (i = ind + 1; i <= 4; i++) newc += w[i];
+    newc <<= 1;
+    newc -= w[ind];/*2(a+b+c)-d*/
+    if (newc >= w[ind]) break;/*Done*/
+    if (ind == oddinds[0]) {/*Swapping out the first odd index.*/
+      if (sisprime(newc)) {/*new curvature prime*/
+        if (primes == 2) primes = 3;/*Only case that needs updating.*/
+      }
+      else {/*new curvature not prime*/
+        if (primes == 1) break;/*Swapping only prime*/
+        else if (primes == 3) primes = 2;/*Swapping out one of the two primes.*/
+      }
+    }
+    else if (ind == oddinds[1]) {/*Swapping out second odd index.*/
+      if (sisprime(newc)) {/*new curvature prime*/
+        if (primes == 1) primes = 3;/*Only case that needs updating.*/
+      }
+      else {/*new curvature not prime*/
+        if (primes == 2) break;/*Swapping only prime*/
+        else if (primes == 3) primes = 1;/*Swapping out one of the two primes.*/
+      }
+    }
+    w[ind] = newc;
+  }
+  vecsmall_sort(w);
+  return gerepileupto(av, gtovec(w));
+}
+
+
 
