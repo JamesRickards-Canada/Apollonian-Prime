@@ -130,11 +130,11 @@ parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
   for (i = 0; i < Nthreads; i++) pthread_join(thread_id[i], NULL);/*Wait for them to all finish.*/
   pthread_mutex_destroy(&mutex_thickmults);/*Eliminate the mutex*/
   /*Let's write to the file first.*/
-  if (!pari_is_dir("curvcounts")) {
-    int s = system("mkdir -p curvcounts");
-    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts");
+  if (!pari_is_dir("thickcurvcounts")) {
+    int s = system("mkdir -p thickcurvcounts");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY thickcurvcounts");
   }
-  char *filename = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld.dat", gel(vgen, 1), gel(vgen, 2), gel(vgen, 3), gel(vgen, 4), Bmin, Bmax);
+  char *filename = stack_sprintf("thickcurvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld.dat", gel(vgen, 1), gel(vgen, 2), gel(vgen, 3), gel(vgen, 4), Bmin, Bmax);
   FILE *F = fopen(filename, "w");/*Created the output file f*/
   for (i = 0; i < nB; i++) pari_fprintf(F, "%d\n", found[i]);
   fclose(F);
@@ -154,8 +154,8 @@ parthickenedmult(GEN vgen, long Bmin, long Bmax, int Nthreads, int load)
   pari_free(starts);
   GEN ret = gen_1;
   if (load) {/*Make the return Vecsmall if requested*/
-    ret = cgetg(sind + 1, t_VECSMALL);
-    for (i = 1; i <= sind; i++) ret[i] = found[i - 1];
+    ret = cgetg(nB + 1, t_VECSMALL);
+    for (i = 1; i <= nB; i++) ret[i] = found[i - 1];
   }
   pari_free(found);/*Free found, the last unfreed variable.*/
   return ret;

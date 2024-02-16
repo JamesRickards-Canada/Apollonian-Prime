@@ -160,11 +160,11 @@ thickened_execute(long x[], long res[], long nres, long Bmin, long Bmax, GEN vor
   pari_free(swaps);
   pari_free(depthseq);
   /*Save the curvature counts to file.*/
-  if (!pari_is_dir("curvcounts")) {
-    int s = system("mkdir -p curvcounts");
-    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts");
+  if (!pari_is_dir("thickcurvcounts")) {
+    int s = system("mkdir -p thickcurvcounts");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY thickcurvcounts");
   }
-  char *filestart = stack_sprintf("curvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld_res-", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, Bmax);
+  char *filestart = stack_sprintf("thickcurvcounts/%Pd_%Pd_%Pd_%Pd_%ld-to-%ld_res-", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, Bmax);
   for (i = 0; i < nres; i++) {
     long r = res[i];/*The residue.*/
     char *thisfile = stack_sprintf("%s%ld.dat", filestart, r);/*The file name.*/
@@ -446,11 +446,11 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
   pari_free(swaps);
   pari_free(depthseq);
   /*Save the binned curvature counts to file.*/
-  if (!pari_is_dir("curvcounts-binned")) {
-    int s = system("mkdir -p curvcounts-binned");
-    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY curvcounts-binned");
+  if (!pari_is_dir("thickcurvcounts-binned")) {
+    int s = system("mkdir -p thickcurvcounts-binned");
+    if (s == -1) pari_err(e_MISC, "ERROR CREATING DIRECTORY thickcurvcounts-binned");
   }
-  char *filestart = stack_sprintf("curvcounts-binned/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu_", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
+  char *filestart = stack_sprintf("thickcurvcounts-binned/%Pd_%Pd_%Pd_%Pd_from-%lu-size-%lu-nbins-%lu_", gel(vorig, 1), gel(vorig, 2), gel(vorig, 3), gel(vorig, 4), Bmin, binsize, nbins);
   char *filethick = stack_sprintf("%sthick.dat", filestart);
   FILE *Fthick = fopen(filethick, "w");/*Create the output file*/
   for (i = 1; i <= nbins; i++) pari_fprintf(Fthick, "%d\n", thickcounts[i]);
