@@ -364,7 +364,7 @@ thickened_bin_execute(long x[], unsigned long Bmin, unsigned long binsize, unsig
   for (i = 0; i <= 1; i++) {/*First two, checking primality*/
     if (!sisprime(x[i])) continue;
     primes[0] += (i + 1);
-    if (x[i] < Bmin && x[i] > Bmax) continue;/*Ensure we are in the right range.*/
+    if (x[i] < Bmin || x[i] > Bmax) continue;/*Ensure we are in the right range.*/
     long binno = 1 + ((x[i] - Bmin) / binsize);
     primecounts[binno]++;
   }
