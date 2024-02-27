@@ -484,23 +484,23 @@ primerootred(GEN v)
     for (i = ind + 1; i <= 4; i++) newc += w[i];
     newc <<= 1;
     newc -= w[ind];/*2(a+b+c)-d*/
-    if (newc >= w[ind]) break;/*Done*/
+    if (newc >= w[ind]) break;/*Done, reduced to the root of the whole packing.*/
     if (ind == oddinds[0]) {/*Swapping out the first odd index.*/
+      if (primes == 1) break;/*Swapping only prime, not allowed.*/
       if (sisprime(newc)) {/*new curvature prime*/
         if (primes == 2) primes = 3;/*Only case that needs updating.*/
       }
       else {/*new curvature not prime*/
-        if (primes == 1) break;/*Swapping only prime*/
-        else if (primes == 3) primes = 2;/*Swapping out one of the two primes.*/
+        if (primes == 3) primes = 2;/*Swapping out one of the two primes.*/
       }
     }
     else if (ind == oddinds[1]) {/*Swapping out second odd index.*/
+      if (primes == 2) break;/*Swapping only prime, not allowed.*/
       if (sisprime(newc)) {/*new curvature prime*/
         if (primes == 1) primes = 3;/*Only case that needs updating.*/
       }
       else {/*new curvature not prime*/
-        if (primes == 2) break;/*Swapping only prime*/
-        else if (primes == 3) primes = 1;/*Swapping out one of the two primes.*/
+        if (primes == 3) primes = 1;/*Swapping out one of the two primes.*/
       }
     }
     w[ind] = newc;
