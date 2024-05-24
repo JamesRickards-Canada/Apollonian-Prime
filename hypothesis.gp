@@ -5,9 +5,25 @@ We test primes equivalent to l modulo m from 1 to nbins*nperbin: binning the res
 The return is a vector [g1, g2, ..., gk], where there are k genera. Each gk is a vector of length nbins, whose ith entry is the cumulative count up to nperbin*i of primes represented by f(x, y)-a (not counted with multiplicity: 0 or 1 per prime).
 */
 testhyp(a, l, m, nbins, nperbin) = {
-  my();
-  
-  
+  my(top, forms, counts, fl, rep);
+  top = nbins * nperbin;
+  forms = genera(-4 * a^2);
+  counts = vector(#forms);
+  for (i = 1, #forms,
+    counts[i] = vector(nbins);
+    fl = forms[i];
+    forprime (p = 2, top,
+      if (p % m == l,
+        rep = 0;
+        for (j = 1, #fl,/*See if it is represented.*/
+          if (qfbsolve(fl[j], p + a) != 0, rep = 1; break);
+        );
+        if (rep, counts[i][ceil(p / nperbin)]++);/*Increment*/
+      );
+    );
+    for (j = 2, nbins, counts[i][j] += counts[i][j-1]);/*Make it cumulative*/
+  );
+  return(counts);
 }
 
 
