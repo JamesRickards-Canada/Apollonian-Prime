@@ -21,10 +21,34 @@ testhyp(a, l, m, nbins, nperbin) = {
         if (rep, counts[i][ceil(p / nperbin)]++);/*Increment*/
       );
     );
-    for (j = 2, nbins, counts[i][j] += counts[i][j-1]);/*Make it cumulative*/
+    for (j = 2, nbins, counts[i][j] += counts[i][j - 1]);/*Make it cumulative*/
   );
   return(counts);
 }
+
+/*
+testhyp, but we do forms of discriminant D and test f(x, y)+a and only care about primes, no l mod m condition.
+*/
+testhyp2(D, a, nbins, nperbin) = {
+  my(top, forms, counts, fl, rep);
+  top = nbins * nperbin;
+  forms = genera(D);
+  counts = vector(#forms);
+  for (i = 1, #forms,
+    counts[i] = vector(nbins);
+    fl = forms[i];
+    forprime (p = 2, top,
+      rep = 0;
+      for (j = 1, #fl,/*See if it is represented.*/
+        if (qfbsolve(fl[j], p + a) != 0, rep = 1; break);
+      );
+      if (rep, counts[i][ceil(p / nperbin)]++);/*Increment*/
+    );
+    for (j = 2, nbins, counts[i][j] += counts[i][j - 1]);/*Make it cumulative*/
+  );
+  return(counts);
+}
+
 
 
 /*Lazy way to get the genera. Returns them as a vector, with each component being a vector of 1 genera.*/
